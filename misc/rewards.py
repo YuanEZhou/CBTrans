@@ -71,7 +71,13 @@ def get_self_critical_reward(model, fc_feats, att_feats, att_masks, data_gts, ge
         bleu_scores = 0
     scores = opt.cider_reward_weight * cider_scores + opt.bleu_reward_weight * bleu_scores
 
-    scores = scores[:batch_size] - scores[batch_size:]
+    # scores = scores[:batch_size] - scores[batch_size:]
+    if opt.nsc:
+        scores = scores[:batch_size].reshape(-1,seq_per_img)
+        baseline = (scores.sum(1, keepdims=True) - scores) / (scores.shape[1] - 1)
+        scores = (scores - baseline).reshape(-1)
+    else:
+        scores = scores[:batch_size] - scores[batch_size:]
 
     rewards = np.repeat(scores[:, np.newaxis], gen_result.shape[1], 1)
 
