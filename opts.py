@@ -11,7 +11,7 @@ def parse_opt():
                     help='path to the directory containing the preprocessed att feats')
     parser.add_argument('--input_box_dir', type=str, default='data/mscoco/cocobu_box',
                     help='path to the directory containing the boxes of att feats')
-    parser.add_argument('--input_label_h5', type=str, default='data/cocotalk_label.h5',
+    parser.add_argument('--input_label_h5', type=str, default='data/cocotalk_bw_label.h5',
                     help='path to the h5file containing the preprocessed dataset')
     parser.add_argument('--start_from', type=str, default=None,
                     help="""continue training from saved model at this path. Path must contain files saved by previous training process: 
@@ -156,6 +156,8 @@ def parse_opt():
                     help='Whether using the new self critical.')
     parser.add_argument('--cbt', type=bool, default= True,
                     help='Whether using compact bidirectional transformer.')
+    parser.add_argument('--r2l', type=bool, default= True,
+                    help='Whether generating from right to left.')
 
     args = parser.parse_args()
 

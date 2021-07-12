@@ -96,12 +96,15 @@ def eval_split(model, crit, loader, eval_kwargs={}):
 
         if data.get('labels', None) is not None and verbose_loss:
             # forward the model to get loss
-            tmp = [data['fc_feats'], data['att_feats'], data['labels'], data['masks'], data['att_masks']]
+            tmp = [data['fc_feats'], data['att_feats'], data['labels'], data['masks'], data['att_masks'],data['labels_reverse']]
             tmp = [_.cuda() if _ is not None else _ for _ in tmp]
-            fc_feats, att_feats, labels, masks, att_masks = tmp
+            fc_feats, att_feats, labels, masks, att_masks, labels_reverse = tmp
 
             with torch.no_grad():
-                loss = crit(model(fc_feats, att_feats, labels, att_masks), labels[:,1:], masks[:,1:]).item()
+                if eval_kwargs['r2l']:
+                    loss = crit(model(fc_feats, att_feats, labels_reverse, att_masks), labels_reverse[:,1:], masks[:,1:]).item()
+                else:
+                    loss = crit(model(fc_feats, att_feats, labels, att_masks), labels[:,1:], masks[:,1:]).item()
             loss_sum = loss_sum + loss
             loss_evals = loss_evals + 1
 
@@ -121,7 +124,12 @@ def eval_split(model, crit, loader, eval_kwargs={}):
             for i in range(loader.batch_size):
                 print('\n'.join([utils.decode_sequence(loader.get_vocab(), _['seq'].unsqueeze(0))[0] for _ in model.done_beams[i]]))
                 print('--' * 10)
-        sents = utils.decode_sequence(loader.get_vocab(), seq)
+
+        if eval_kwargs['r2l']:
+            sents = utils.decode_sequence(loader.get_vocab(), seq)
+            sents = [' '.join(sent.split()[::-1]) for sent in sents]
+        else:
+            sents = utils.decode_sequence(loader.get_vocab(), seq)
 
         for k, sent in enumerate(sents):
             entry = {'image_id': data['infos'][k]['id'], 'caption': sent}

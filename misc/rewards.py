@@ -8,7 +8,7 @@ import misc.utils as utils
 from collections import OrderedDict
 import torch
 
-import sys
+import sys, pdb
 sys.path.append("cider")
 from pyciderevalcap.ciderD.ciderD import CiderD
 sys.path.append("coco-caption")
@@ -24,17 +24,21 @@ def init_scorer(cached_tokens):
     global Bleu_scorer
     Bleu_scorer = Bleu_scorer or Bleu(4)
 
-def array_to_str(arr):
+def array_to_str(arr, r2l=False):
     out = ''
     for i in range(len(arr)):
         out += str(arr[i]) + ' '
         if arr[i] == 0:
             break
-    return out.strip()
+    if r2l:
+        return ' '.join(out.strip().split()[::-1])
+    else:
+        return out.strip()
 
 def get_self_critical_reward(model, fc_feats, att_feats, att_masks, data_gts, gen_result, opt):
     batch_size = gen_result.size(0)# batch_size = sample_size * seq_per_img
     seq_per_img = batch_size // len(data_gts)
+    # pdb.set_trace()
     
     # get greedy decoding baseline
     model.eval()
@@ -46,10 +50,11 @@ def get_self_critical_reward(model, fc_feats, att_feats, att_masks, data_gts, ge
     
     gen_result = gen_result.data.cpu().numpy()
     greedy_res = greedy_res.data.cpu().numpy()
+
     for i in range(batch_size):
-        res[i] = [array_to_str(gen_result[i])]
+        res[i] = [array_to_str(gen_result[i],opt.r2l)]
     for i in range(batch_size):
-        res[batch_size + i] = [array_to_str(greedy_res[i])]
+        res[batch_size + i] = [array_to_str(greedy_res[i],opt.r2l)]
 
     gts = OrderedDict()
     for i in range(len(data_gts)):

@@ -14,10 +14,13 @@ class LossWrapper(torch.nn.Module):
         self.rl_crit = utils.RewardCriterion()
 
     def forward(self, fc_feats, att_feats, labels, masks, att_masks, gts, gt_indices,
-                sc_flag):
+                sc_flag,labels_reverse):
         out = {}
         if not sc_flag:
-            loss = self.crit(self.model(fc_feats, att_feats, labels, att_masks), labels[:,1:], masks[:,1:])
+            if self.opt.r2l:
+                loss = self.crit(self.model(fc_feats, att_feats, labels_reverse, att_masks), labels_reverse[:,1:], masks[:,1:])
+            else:
+                loss = self.crit(self.model(fc_feats, att_feats, labels, att_masks), labels[:,1:], masks[:,1:])
         else:
             gen_result, sample_logprobs = self.model(fc_feats, att_feats, att_masks, opt={'sample_max':0}, mode='sample')
             gts = [gts[_] for _ in gt_indices.tolist()]
