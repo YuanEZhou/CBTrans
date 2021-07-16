@@ -85,6 +85,10 @@ class DataLoader(data.Dataset):
         self.info = json.load(open(self.opt.input_json))
         self.ix_to_word = self.info['ix_to_word']
         self.vocab_size = len(self.ix_to_word)
+        if self.opt.cbt:
+            self.ix_to_word[str(self.vocab_size+1)] = '<l2r>'
+            self.ix_to_word[str(self.vocab_size+2)] = '<r2l>'
+            self.vocab_size = len(self.ix_to_word)
         print('vocab size is ', self.vocab_size)
         
         # open the hdf5 file
@@ -155,6 +159,12 @@ class DataLoader(data.Dataset):
             ixl = random.randint(ix1, ix2 - seq_per_img + 1)
             seq = self.h5_label_file['labels'][ixl: ixl + seq_per_img, :self.seq_length]
             seq_reverse = self.h5_label_file['labels_reverse'][ixl: ixl + seq_per_img, :self.seq_length]
+            
+
+        if self.opt.cbt:
+            tmp_idx = np.arange(seq_per_img)
+            random.shuffle(tmp_idx)
+            seq_reverse = seq_reverse[tmp_idx]
 
         return seq, seq_reverse
 
@@ -185,6 +195,10 @@ class DataLoader(data.Dataset):
             tmp_label = np.zeros([seq_per_img, self.seq_length + 2], dtype = 'int')
             tmp_reverse_label = np.zeros([seq_per_img, self.seq_length + 2], dtype = 'int')
             tmp_label[:, 1 : self.seq_length + 1], tmp_reverse_label[:, 1 : self.seq_length + 1] = self.get_captions(ix, seq_per_img)
+            if self.opt.cbt:
+                tmp_label[:,0] = self.vocab_size - 1
+                tmp_reverse_label[:,0] =  self.vocab_size
+
             label_batch.append(tmp_label)
             label_reverse_batch.append(tmp_reverse_label)
 
@@ -216,15 +230,23 @@ class DataLoader(data.Dataset):
         # set att_masks to None if attention features have same length
         if data['att_masks'].sum() == data['att_masks'].size:
             data['att_masks'] = None
-
         data['labels'] = np.vstack(label_batch)
         data['labels_reverse'] = np.vstack(label_reverse_batch)
         # generate mask
-        nonzeros = np.array(list(map(lambda x: (x != 0).sum()+2, data['labels'])))
-        mask_batch = np.zeros([data['labels'].shape[0], self.seq_length + 2], dtype = 'float32')
-        for ix, row in enumerate(mask_batch):
-            row[:nonzeros[ix]] = 1
-        data['masks'] = mask_batch
+        if self.opt.cbt:
+            nonzeros_forward = np.array(list(map(lambda x: (x != 0).sum()+1, data['labels'])))
+            nonzeros_backward = np.array(list(map(lambda x: (x != 0).sum()+1, data['labels_reverse'])))
+            mask_batch = np.zeros([data['labels'].shape[0], 2,self.seq_length + 2], dtype = 'float32')
+            for ix, row in enumerate(mask_batch):
+                row[0,:nonzeros_forward[ix]] = 1
+                row[1,:nonzeros_backward[ix]] = 1
+            data['masks'] = mask_batch
+        else:
+            nonzeros = np.array(list(map(lambda x: (x != 0).sum()+2, data['labels'])))
+            mask_batch = np.zeros([data['labels'].shape[0], self.seq_length + 2], dtype = 'float32')
+            for ix, row in enumerate(mask_batch):
+                row[:nonzeros[ix]] = 1
+            data['masks'] = mask_batch
 
         data['gts'] = gts # all ground truth captions of each images
         data['bounds'] = {'it_pos_now': self.iterators[split], 'it_max': len(self.split_ix[split]), 'wrapped': wrapped}

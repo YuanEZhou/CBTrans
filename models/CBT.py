@@ -141,11 +141,9 @@ class DecoderLayer(nn.Module):
         "Follow Figure 1 (right) for connections."
         m = memory
         x = self.sublayer[0](x, lambda x: self.self_attn(x, x, x, tgt_mask))
-        if self.opt.cbt:
-            x = x.view(x.size(0),-1,x.size(-1))
+        x = x.view(x.size(0),-1,x.size(-1))
         x = self.sublayer[1](x, lambda x: self.src_attn(x, m, m, src_mask))
-        if self.opt.cbt:
-            x = x.view(x.size(0), 2, -1,x.size(-1))
+        x = x.view(x.size(0), 2, -1,x.size(-1))
         return self.sublayer[2](x, self.feed_forward)
 
 def subsequent_mask(size):
@@ -301,15 +299,12 @@ class PositionalEncoding(nn.Module):
         self.register_buffer('pe', pe)
         
     def forward(self, x):
-        
-        if self.opt.cbt:
-            x = x.view(-1,x.size(-2),x.size(-1))
+        x = x.view(-1,x.size(-2),x.size(-1))
         x = x + self.pe[:, :x.size(1)]
-        if self.opt.cbt:
-            x = x.view(-1,2,x.size(-2),x.size(-1))
+        x = x.view(-1,2,x.size(-2),x.size(-1))
         return self.dropout(x)
 
-class TransformerModel(AttModel):
+class CBT(AttModel):
 
     def make_model(self, src_vocab, tgt_vocab, N=6, 
                d_model=512, d_ff=2048, h=8, dropout=0.1):
@@ -321,22 +316,14 @@ class TransformerModel(AttModel):
         ff = PositionwiseFeedForward(d_model, d_ff, dropout)
         position = PositionalEncoding(d_model, dropout, self.opt)
 
-        if self.opt.cbt:
-            model = EncoderDecoder(
-                Encoder(EncoderLayer(d_model, c(attn), c(ff), dropout), N),
-                Decoder(DecoderLayer(d_model, c(attn_cb), c(attn), 
-                                    c(ff), dropout,self.opt), N),
-                lambda x:x, # nn.Sequential(Embeddings(d_model, src_vocab), c(position)),
-                nn.Sequential(Embeddings(d_model, tgt_vocab), c(position)),
-                Generator(d_model, tgt_vocab))
-        else:
-            model = EncoderDecoder(
-                Encoder(EncoderLayer(d_model, c(attn), c(ff), dropout), N),
-                Decoder(DecoderLayer(d_model, c(attn), c(attn), 
-                                    c(ff), dropout, self.opt), N),
-                lambda x:x, # nn.Sequential(Embeddings(d_model, src_vocab), c(position)),
-                nn.Sequential(Embeddings(d_model, tgt_vocab), c(position)),
-                Generator(d_model, tgt_vocab))
+        model = EncoderDecoder(
+            Encoder(EncoderLayer(d_model, c(attn), c(ff), dropout), N),
+            Decoder(DecoderLayer(d_model, c(attn_cb), c(attn), 
+                                c(ff), dropout,self.opt), N),
+            lambda x:x, # nn.Sequential(Embeddings(d_model, src_vocab), c(position)),
+            nn.Sequential(Embeddings(d_model, tgt_vocab), c(position)),
+            Generator(d_model, tgt_vocab))
+
         
         # This was important from their code. 
         # Initialize parameters with Glorot / fan_avg.
@@ -346,7 +333,7 @@ class TransformerModel(AttModel):
         return model
 
     def __init__(self, opt):
-        super(TransformerModel, self).__init__(opt)
+        super(CBT, self).__init__(opt)
         self.opt = opt
         # self.config = yaml.load(open(opt.config_file))
         # d_model = self.input_encoding_size # 512
@@ -395,23 +382,13 @@ class TransformerModel(AttModel):
         att_masks = att_masks.unsqueeze(-2)
         
         if seq is not None:
-            if self.opt.cbt:
-                # crop the last one
-                seq = seq[:,:,:-1]
-                seq_mask = (seq.data > 0)
+            # crop the last one
+            seq = seq[:,:,:-1]
+            seq_mask = (seq.data > 0)
 
-                seq_mask = seq_mask.unsqueeze(-2).view(-1,1,seq.size(-1))
-                seq_mask = seq_mask & subsequent_mask(seq.size(-1)).to(seq_mask)
-                seq_mask = seq_mask.view(seq.size(0),seq.size(1),-1,seq.size(-1))
-            else:
-                # crop the last one
-                seq = seq[:,:-1]
-                seq_mask = (seq.data > 0)
-                # seq_mask[:,0] += 1
-                seq_mask[:,0] += True
-
-                seq_mask = seq_mask.unsqueeze(-2)
-                seq_mask = seq_mask & subsequent_mask(seq.size(-1)).to(seq_mask)
+            seq_mask = seq_mask.unsqueeze(-2).view(-1,1,seq.size(-1))
+            seq_mask = seq_mask & subsequent_mask(seq.size(-1)).to(seq_mask)
+            seq_mask = seq_mask.view(seq.size(0),seq.size(1),-1,seq.size(-1))
         else:
             seq_mask = None
 
@@ -431,11 +408,111 @@ class TransformerModel(AttModel):
         state = [ys.unsqueeze(0)]
         """
         if state is None:
-            ys = it.unsqueeze(1)
+            ys = it.unsqueeze(2)
         else:
-            ys = torch.cat([state[0][0], it.unsqueeze(1)], dim=1)
+            ys = torch.cat([state[0][0], it.unsqueeze(2)], dim=2)
         out = self.model.decode(memory, mask, 
                                ys, 
-                               subsequent_mask(ys.size(1))
+                               subsequent_mask(ys.size(2)).unsqueeze(0)
                                         .to(memory.device))
-        return out[:, -1], [ys.unsqueeze(0)]
+        return out[:,:, -1], [ys.unsqueeze(0)]
+
+
+    def get_logprobs_state(self, it, fc_feats, att_feats, p_att_feats, att_masks, state):
+        # 'it' contains a word index
+        xt = self.embed(it)
+
+        output, state = self.core(xt, fc_feats, att_feats, p_att_feats, state, att_masks)
+        logprobs = F.log_softmax(self.logit(output), dim=-1)
+
+        return logprobs, state
+
+
+    def _sample(self, fc_feats, att_feats, att_masks=None, opt={}):
+        sample_max = opt.get('sample_max', 1)
+        beam_size = opt.get('beam_size', 1)
+        temperature = opt.get('temperature', 1.0)
+        decoding_constraint = opt.get('decoding_constraint', 0)
+        block_trigrams = opt.get('block_trigrams', 0)
+        if beam_size > 1:
+            return self._sample_beam(fc_feats, att_feats, att_masks, opt)
+
+        batch_size = fc_feats.size(0)
+        state = self.init_hidden(batch_size)
+
+        p_fc_feats, p_att_feats, pp_att_feats, p_att_masks = self._prepare_feature(fc_feats, att_feats, att_masks)
+
+        trigrams = [] # will be a list of batch_size dictionaries
+
+        seq = fc_feats.new_zeros((batch_size, 2, self.seq_length), dtype=torch.long)
+        seqLogprobs = fc_feats.new_zeros(batch_size, 2, self.seq_length)
+        for t in range(self.seq_length + 1):
+            if t == 0: # input <l2r> and <r2l>
+                it = fc_feats.new_zeros((batch_size, 2), dtype=torch.long)
+                it[:,0] = self.vocab_size -1 
+                it[:,1] = self.vocab_size
+
+            logprobs, state = self.get_logprobs_state(it, p_fc_feats, p_att_feats, pp_att_feats, p_att_masks, state)
+            
+            if decoding_constraint and t > 0:
+                tmp = logprobs.new_zeros(logprobs.size())
+                tmp.scatter_(1, seq[:,t-1].data.unsqueeze(1), float('-inf'))
+                logprobs = logprobs + tmp
+
+            # Mess with trigrams
+            if block_trigrams and t >= 3:
+                # Store trigram generated at last step
+                prev_two_batch = seq[:,t-3:t-1]
+                for i in range(batch_size): # = seq.size(0)
+                    prev_two = (prev_two_batch[i][0].item(), prev_two_batch[i][1].item())
+                    current  = seq[i][t-1]
+                    if t == 3: # initialize
+                        trigrams.append({prev_two: [current]}) # {LongTensor: list containing 1 int}
+                    elif t > 3:
+                        if prev_two in trigrams[i]: # add to list
+                            trigrams[i][prev_two].append(current)
+                        else: # create list
+                            trigrams[i][prev_two] = [current]
+                # Block used trigrams at next step
+                prev_two_batch = seq[:,t-2:t]
+                mask = torch.zeros(logprobs.size(), requires_grad=False).cuda() # batch_size x vocab_size
+                for i in range(batch_size):
+                    prev_two = (prev_two_batch[i][0].item(), prev_two_batch[i][1].item())
+                    if prev_two in trigrams[i]:
+                        for j in trigrams[i][prev_two]:
+                            mask[i,j] += 1
+                # Apply mask to log probs
+                #logprobs = logprobs - (mask * 1e9)
+                alpha = 2.0 # = 4
+                logprobs = logprobs + (mask * -0.693 * alpha) # ln(1/2) * alpha (alpha -> infty works best)
+
+            # sample the next word
+            if t == self.seq_length: # skip if we achieve maximum length
+                break
+            if sample_max:
+                sampleLogprobs, it = torch.max(logprobs, 2)
+            else:
+                if temperature == 1.0:
+                    prob_prev = torch.exp(logprobs) # fetch prev distribution: shape Nx(M+1)
+                else:
+                    # scale logprobs by temperature
+                    prob_prev = torch.exp(torch.div(logprobs, temperature))
+                it = torch.multinomial(prob_prev.view(-1, prob_prev.size(-1)), 1).view(-1,2, 1)
+                sampleLogprobs = logprobs.gather(2, it) # gather the logprobs at sampled positions
+                # it = it.view(-1).long() # and flatten indices for downstream processing
+                it = it.squeeze(-1)
+                sampleLogprobs = sampleLogprobs.squeeze(-1)
+
+
+            # stop when all finished
+            if t == 0:
+                unfinished = torch.any(it > 0, dim = 1, keepdim=True)
+            else:
+                unfinished = unfinished * torch.any(it > 0, dim = 1, keepdim=True)
+            it = it * unfinished.type_as(it)
+            seq[:,:,t] = it
+            seqLogprobs[:,:,t] = sampleLogprobs
+            # quit loop if all sequences have finished
+            if unfinished.sum() == 0:
+                break
+        return seq, seqLogprobs

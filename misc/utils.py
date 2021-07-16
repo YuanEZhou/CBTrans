@@ -9,7 +9,7 @@ import numpy as np
 import torch.optim as optim
 import os
 
-import six
+import six, pdb
 from six.moves import cPickle
 
 bad_endings = ['with','in','on','of','a','at','to','for','an','this','his','her','that']
@@ -53,14 +53,17 @@ def if_use_feat(caption_model):
     return use_fc, use_att
 
 # Input: seq, N*D numpy array, with element 0 .. vocab_size. 0 is END token.
-def decode_sequence(ix_to_word, seq):
+def decode_sequence(ix_to_word, seq, return_length=False):
     N, D = seq.size()
     out = []
+    length_idx = []
     for i in range(N):
+        tmp = 0
         txt = ''
         for j in range(D):
             ix = seq[i,j]
             if ix > 0 :
+                tmp = j
                 if j >= 1:
                     txt = txt + ' '
                 txt = txt + ix_to_word[str(ix.item())]
@@ -75,7 +78,12 @@ def decode_sequence(ix_to_word, seq):
                     break
             txt = ' '.join(words[0:len(words)+flag])
         out.append(txt)
-    return out
+        length_idx.append(tmp)
+
+    if return_length:
+        return out, np.asarray(length_idx)
+    else:
+        return out
 
 def to_contiguous(tensor):
     if tensor.is_contiguous():

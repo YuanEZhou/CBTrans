@@ -24,7 +24,7 @@ def init_scorer(cached_tokens):
     global Bleu_scorer
     Bleu_scorer = Bleu_scorer or Bleu(4)
 
-def array_to_str(arr, r2l=False):
+def array_to_str(arr, idx, r2l=False, cbt=False):
     out = ''
     for i in range(len(arr)):
         out += str(arr[i]) + ' '
@@ -32,19 +32,26 @@ def array_to_str(arr, r2l=False):
             break
     if r2l:
         return ' '.join(out.strip().split()[::-1])
+    elif cbt:
+        if idx%2 == 0:
+            return out.strip()
+        else:
+            return ' '.join(out.strip().split()[::-1])
     else:
         return out.strip()
 
 def get_self_critical_reward(model, fc_feats, att_feats, att_masks, data_gts, gen_result, opt):
     batch_size = gen_result.size(0)# batch_size = sample_size * seq_per_img
     seq_per_img = batch_size // len(data_gts)
-    # pdb.set_trace()
     
     # get greedy decoding baseline
     model.eval()
     with torch.no_grad():
         greedy_res, _ = model(fc_feats, att_feats, att_masks=att_masks, mode='sample')
     model.train()
+    if opt.cbt:
+        greedy_res = greedy_res.view(-1, greedy_res.size(-1))
+
 
     res = OrderedDict()
     
@@ -52,13 +59,13 @@ def get_self_critical_reward(model, fc_feats, att_feats, att_masks, data_gts, ge
     greedy_res = greedy_res.data.cpu().numpy()
 
     for i in range(batch_size):
-        res[i] = [array_to_str(gen_result[i],opt.r2l)]
+        res[i] = [array_to_str(gen_result[i],i,opt.r2l,opt.cbt)]
     for i in range(batch_size):
-        res[batch_size + i] = [array_to_str(greedy_res[i],opt.r2l)]
+        res[batch_size + i] = [array_to_str(greedy_res[i],i,opt.r2l,opt.cbt)]
 
     gts = OrderedDict()
     for i in range(len(data_gts)):
-        gts[i] = [array_to_str(data_gts[i][j]) for j in range(len(data_gts[i]))]
+        gts[i] = [array_to_str(data_gts[i][j],j) for j in range(len(data_gts[i]))]
 
     res_ = [{'image_id':i, 'caption': res[i]} for i in range(2 * batch_size)]
     res__ = {i: res[i] for i in range(2 * batch_size)}

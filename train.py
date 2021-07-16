@@ -25,6 +25,7 @@ from misc.loss_wrapper import LossWrapper
 import random
 torch.manual_seed(0)
 torch.cuda.manual_seed(0)
+torch.cuda.manual_seed_all(0)
 np.random.seed(0)
 random.seed(0)
 
@@ -94,7 +95,7 @@ def train(opt):
     dp_lw_model.train()
 
     if opt.noamopt:
-        assert opt.caption_model == 'transformer', 'noamopt can only work with transformer'
+        assert opt.caption_model == 'transformer' or opt.caption_model == 'cbt', 'noamopt can only work with transformer'
         optimizer = utils.get_std_opt(model, factor=opt.noamopt_factor, warmup=opt.noamopt_warmup)
         optimizer._step = iteration
     elif opt.reduce_on_plateau:
@@ -208,6 +209,13 @@ def train(opt):
             infos['epoch'] = epoch
             infos['iterators'] = loader.iterators
             infos['split_ix'] = loader.split_ix
+
+            # # eval model
+            # eval_kwargs = {'split': 'val',
+            #                 'dataset': opt.input_json}
+            # eval_kwargs.update(vars(opt))
+            # val_loss, predictions, lang_stats = eval_utils.eval_split(
+            #     dp_model, lw_model.crit, loader, eval_kwargs)
             
             # make evaluation on validation set, and save model
             if (iteration % opt.save_checkpoint_every == 0):

@@ -24,8 +24,8 @@ def parse_opt():
                     help='Cached token file for calculating cider score during self critical training.')
 
     # Model settings
-    parser.add_argument('--caption_model', type=str, default="transformer",
-                    help='show_tell, show_attend_tell, all_img, fc, att2in, att2in2, att2all2, adaatt, adaattmo, topdown, stackatt, denseatt, transformer')
+    parser.add_argument('--caption_model', type=str, default="cbt",
+                    help='show_tell, show_attend_tell, all_img, fc, att2in, att2in2, att2all2, adaatt, adaattmo, topdown, stackatt, denseatt, transformer, cbt')
     parser.add_argument('--rnn_size', type=int, default=512,
                     help='size of the rnn in number of hidden nodes in each layer')
     parser.add_argument('--num_layers', type=int, default=1,
@@ -156,12 +156,13 @@ def parse_opt():
                     help='Whether using the new self critical.')
     parser.add_argument('--cbt', type=bool, default= True,
                     help='Whether using compact bidirectional transformer.')
-    parser.add_argument('--r2l', type=bool, default= True,
+    parser.add_argument('--r2l', type=bool, default= False,
                     help='Whether generating from right to left.')
 
     args = parser.parse_args()
 
     # Check if args are valid
+    assert ((args.caption_model == 'cbt' and args.cbt == True) or (args.caption_model != 'cbt' and args.cbt == False)), "caption_model should be consistent with cbt"
     assert args.rnn_size > 0, "rnn_size should be greater than 0"
     assert args.num_layers > 0, "num_layers should be greater than 0"
     assert args.input_encoding_size > 0, "input_encoding_size should be greater than 0"

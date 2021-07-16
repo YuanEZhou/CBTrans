@@ -10,7 +10,7 @@ import json
 from json import encoder
 import random
 import string
-import time
+import time, pdb
 import os
 import sys
 import misc.utils as utils
@@ -101,7 +101,11 @@ def eval_split(model, crit, loader, eval_kwargs={}):
             fc_feats, att_feats, labels, masks, att_masks, labels_reverse = tmp
 
             with torch.no_grad():
-                if eval_kwargs['r2l']:
+                if eval_kwargs['cbt']:
+                    labels_combine = torch.cat((labels.unsqueeze(1),labels_reverse.unsqueeze(1)),1)
+                    output  = model(fc_feats, att_feats, labels_combine, att_masks)
+                    loss = crit(output.view(-1,output.size(-2),output.size(-1)), labels_combine[:,:,1:].view(-1,labels_combine.size(-1)-1), masks[:,:,1:].view(-1,masks.size(-1)-1))
+                elif eval_kwargs['r2l']:
                     loss = crit(model(fc_feats, att_feats, labels_reverse, att_masks), labels_reverse[:,1:], masks[:,1:]).item()
                 else:
                     loss = crit(model(fc_feats, att_feats, labels, att_masks), labels[:,1:], masks[:,1:]).item()
@@ -117,7 +121,10 @@ def eval_split(model, crit, loader, eval_kwargs={}):
         fc_feats, att_feats, att_masks = tmp
         # forward the model to also get generated samples for each image
         with torch.no_grad():
-            seq = model(fc_feats, att_feats, att_masks, opt=eval_kwargs, mode='sample')[0].data
+            if eval_kwargs['cbt']:
+                seq, seqLogprobs = model(fc_feats, att_feats, att_masks, opt=eval_kwargs, mode='sample')
+            else:
+                seq = model(fc_feats, att_feats, att_masks, opt=eval_kwargs, mode='sample')[0].data
         
         # Print beam search
         if beam_size > 1 and verbose_beam:
@@ -125,7 +132,24 @@ def eval_split(model, crit, loader, eval_kwargs={}):
                 print('\n'.join([utils.decode_sequence(loader.get_vocab(), _['seq'].unsqueeze(0))[0] for _ in model.done_beams[i]]))
                 print('--' * 10)
 
-        if eval_kwargs['r2l']:
+        if eval_kwargs['cbt']:
+            sents = []
+            seq = seq.view(-1, seq.size(-1))
+            sents_tmp, length_idx = utils.decode_sequence(loader.get_vocab(), seq, True)
+            seqLogprobs_sum = torch.cumsum(seqLogprobs, dim=2)
+            length_idx = torch.from_numpy(length_idx.reshape(seqLogprobs.size(0), seqLogprobs.size(1), 1)).to(seqLogprobs_sum.device)
+            seqLogprobs_sum = seqLogprobs_sum.gather(2, length_idx)
+            # length penalty, length_average or length_wu
+            seqLogprobs_lp = utils.length_average(length_idx+1, seqLogprobs_sum).squeeze(-1)
+            choice = torch.max(seqLogprobs_lp,dim =-1, keepdim=True)[1].cpu()
+            index = torch.arange(seqLogprobs_lp.numel()).view(seqLogprobs_lp.size())
+            index = index.gather(1,choice).view(-1).tolist()
+            for i in index:
+                if i%2 == 0:
+                    sents.append(sents_tmp[i])
+                else:
+                    sents.append(' '.join(sents_tmp[i].split()[::-1]))
+        elif eval_kwargs['r2l']:
             sents = utils.decode_sequence(loader.get_vocab(), seq)
             sents = [' '.join(sent.split()[::-1]) for sent in sents]
         else:
