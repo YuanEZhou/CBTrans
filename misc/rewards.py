@@ -85,9 +85,14 @@ def get_self_critical_reward(model, fc_feats, att_feats, att_masks, data_gts, ge
 
     # scores = scores[:batch_size] - scores[batch_size:]
     if opt.nsc:
-        scores = scores[:batch_size].reshape(-1,seq_per_img)
-        baseline = (scores.sum(1, keepdims=True) - scores) / (scores.shape[1] - 1)
-        scores = (scores - baseline).reshape(-1)
+        if opt.cbt:
+            scores = scores[:batch_size].reshape(len(data_gts),-1,2)
+            baseline = (scores.sum(1, keepdims=True) - scores) / (scores.shape[1] - 1)
+            scores = (scores - baseline).reshape(-1)
+        else:
+            scores = scores[:batch_size].reshape(-1,seq_per_img)
+            baseline = (scores.sum(1, keepdims=True) - scores) / (scores.shape[1] - 1)
+            scores = (scores - baseline).reshape(-1)
     else:
         scores = scores[:batch_size] - scores[batch_size:]
 
