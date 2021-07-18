@@ -154,9 +154,9 @@ def parse_opt():
     # Add by this project
     parser.add_argument('--nsc', type=bool, default= True,
                     help='Whether using the new self critical.')
-    parser.add_argument('--cbt', type=bool, default= True,
+    parser.add_argument('--cbt', type=bool, default= False,
                     help='Whether using compact bidirectional transformer.')
-    parser.add_argument('--r2l', type=bool, default= False,
+    parser.add_argument('--r2l', type=bool, default= True,
                     help='Whether generating from right to left.')
 
     args = parser.parse_args()

@@ -128,9 +128,19 @@ def eval_split(model, crit, loader, eval_kwargs={}):
         
         # Print beam search
         if beam_size > 1 and verbose_beam:
-            for i in range(loader.batch_size):
-                print('\n'.join([utils.decode_sequence(loader.get_vocab(), _['seq'].unsqueeze(0))[0] for _ in model.done_beams[i]]))
-                print('--' * 10)
+            if eval_kwargs['cbt']:
+                for i in range(loader.batch_size):
+                    for j in range(2):
+                        for _ in model.done_beams[i][j]:
+                            if j%2 == 0:
+                                print(utils.decode_sequence(loader.get_vocab(), _['seq'].unsqueeze(0))[0])
+                            else:
+                                print(' '.join(utils.decode_sequence(loader.get_vocab(), _['seq'].unsqueeze(0))[0].split()[::-1]))
+                    print('--' * 10)
+            else:
+                for i in range(loader.batch_size):
+                    print('\n'.join([utils.decode_sequence(loader.get_vocab(), _['seq'].unsqueeze(0))[0] for _ in model.done_beams[i]]))
+                    print('--' * 10)
 
         if eval_kwargs['cbt']:
             sents = []
@@ -172,6 +182,7 @@ def eval_split(model, crit, loader, eval_kwargs={}):
         # if we wrapped around the split or used up val imgs budget then bail
         ix0 = data['bounds']['it_pos_now']
         ix1 = data['bounds']['it_max']
+
         if num_images != -1:
             ix1 = min(ix1, num_images)
         for i in range(n - ix1):
