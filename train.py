@@ -47,6 +47,7 @@ def train(opt):
     loader = DataLoader(opt)
     opt.vocab_size = loader.vocab_size
     opt.seq_length = loader.seq_length
+    # opt.vocab = loader.get_vocab()
 
     tb_summary_writer = tb and tb.SummaryWriter(opt.checkpoint_path)
 

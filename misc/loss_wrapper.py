@@ -33,6 +33,10 @@ class LossWrapper(torch.nn.Module):
             gts = [gts[_] for _ in gt_indices.tolist()]
             reward = get_self_critical_reward(self.model, fc_feats, att_feats, att_masks, gts, gen_result, self.opt)
             reward = torch.from_numpy(reward).float().to(gen_result.device)
+            if self.opt.only_l2r_self_critical:
+                sample_logprobs = sample_logprobs.view(-1,2,sample_logprobs.size(-1))[:,0,:]
+                gen_result = gen_result.view(-1,2,gen_result.size(-1))[:,0,:]
+                reward = reward.view(-1,2,reward.size(-1))[:,0,:]
             loss = self.rl_crit(sample_logprobs, gen_result.data, reward)
             out['reward'] = reward[:,0].mean()
         out['loss'] = loss

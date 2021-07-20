@@ -158,6 +158,8 @@ def parse_opt():
                     help='Whether using compact bidirectional transformer.')
     parser.add_argument('--r2l', type=bool, default= False,
                     help='Whether generating from right to left.')
+    parser.add_argument('--only_l2r_self_critical', type=bool, default= True,
+                    help='.')
 
     args = parser.parse_args()
 
