@@ -150,7 +150,9 @@ def eval_split(model, crit, loader, eval_kwargs={}):
             length_idx = torch.from_numpy(length_idx.reshape(seqLogprobs.size(0), seqLogprobs.size(1), 1)).to(seqLogprobs_sum.device)
             seqLogprobs_sum = seqLogprobs_sum.gather(2, length_idx)
             # length penalty, length_average or length_wu
+            # seqLogprobs_lp = utils.length_wu(length_idx+1, seqLogprobs_sum, alpha=1.0).squeeze(-1)
             seqLogprobs_lp = utils.length_average(length_idx+1, seqLogprobs_sum).squeeze(-1)
+            # seqLogprobs_lp = seqLogprobs_sum.squeeze(-1)
             choice = torch.max(seqLogprobs_lp,dim =-1, keepdim=True)[1].cpu()
             index = torch.arange(seqLogprobs_lp.numel()).view(seqLogprobs_lp.size())
             index = index.gather(1,choice).view(-1).tolist()

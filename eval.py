@@ -44,11 +44,11 @@ parser.add_argument('--dump_path', type=int, default=0,
 # Sampling options
 parser.add_argument('--sample_max', type=int, default=1,
                 help='1 = sample argmax words. 0 = sample from distributions.')
-parser.add_argument('--beam_size', type=int, default=1,
+parser.add_argument('--beam_size', type=int, default=3,
                 help='used when sample_max = 1, indicates number of beams in beam search. Usually 2 or 3 works well. More is not better. Set this to 1 for faster runtime but a bit worse performance.')
 parser.add_argument('--max_length', type=int, default=20,
                 help='Maximum length during sampling')
-parser.add_argument('--length_penalty', type=str, default='avg_0.2',
+parser.add_argument('--length_penalty', type=str, default='',
                 help='wu_X or avg_X, X is the alpha')
 parser.add_argument('--group_size', type=int, default=1,
                 help='used for diverse beam search. if group_size is 1, then it\'s normal beam search')
@@ -83,7 +83,7 @@ parser.add_argument('--split', type=str, default='val',
 parser.add_argument('--coco_json', type=str, default='', 
                 help='if nonempty then use this file in DataLoaderRaw (see docs there). Used only in MSCOCO test evaluation, where we have a specific json file of only test set images.')
 # misc
-parser.add_argument('--id', type=str, default='', 
+parser.add_argument('--id', type=str, default='transformer-cb-b3', 
                 help='an id identifying this run/job. used only if language_eval = 1 for appending to intermediate files')
 parser.add_argument('--verbose_beam', type=int, default=1, 
                 help='if we need to print out all beam search beams.')
