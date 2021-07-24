@@ -191,7 +191,8 @@ def attention_cb(query, key, value, mask=None, dropout=None):
     right =  torch.matmul(p_attn_right, value_flip)
 
     #combine
-    combine = left + 0.1*torch.tanh(right)
+    # combine = left + 0.1*torch.tanh(right)
+    combine = left + 0.1*torch.relu(right)
     return combine, torch.cat((p_attn_left.unsqueeze(0),p_attn_right.unsqueeze(0)),dim=0)
 
 
