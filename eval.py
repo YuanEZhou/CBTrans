@@ -21,11 +21,11 @@ import torch
 # Input arguments and options
 parser = argparse.ArgumentParser()
 # Input paths
-parser.add_argument('--model', type=str, default='save/transformer-cb/model-best.pth',
+parser.add_argument('--model', type=str, default='save/transformer-cb-VinVL-feat/model-best.pth',
                 help='path to model to evaluate')
 parser.add_argument('--cnn_model', type=str,  default='resnet101',
                 help='resnet101, resnet152')
-parser.add_argument('--infos_path', type=str, default='save/transformer-cb/infos_transformer-cb-best.pkl',
+parser.add_argument('--infos_path', type=str, default='save/transformer-cb-VinVL-feat/infos_transformer-cb-VinVL-feat-best.pkl',
                 help='path to infos to evaluate')
 # Basic options
 parser.add_argument('--batch_size', type=int, default=0,
@@ -44,7 +44,7 @@ parser.add_argument('--dump_path', type=int, default=0,
 # Sampling options
 parser.add_argument('--sample_max', type=int, default=1,
                 help='1 = sample argmax words. 0 = sample from distributions.')
-parser.add_argument('--beam_size', type=int, default=3,
+parser.add_argument('--beam_size', type=int, default=2,
                 help='used when sample_max = 1, indicates number of beams in beam search. Usually 2 or 3 works well. More is not better. Set this to 1 for faster runtime but a bit worse performance.')
 parser.add_argument('--max_length', type=int, default=20,
                 help='Maximum length during sampling')
@@ -78,12 +78,12 @@ parser.add_argument('--input_label_h5', type=str, default='',
                 help='path to the h5file containing the preprocessed dataset')
 parser.add_argument('--input_json', type=str, default='', 
                 help='path to the json file containing additional info and vocab. empty = fetch from model checkpoint.')
-parser.add_argument('--split', type=str, default='val', 
+parser.add_argument('--split', type=str, default='test', 
                 help='if running on MSCOCO images, which split to use: val|test|train')
 parser.add_argument('--coco_json', type=str, default='', 
                 help='if nonempty then use this file in DataLoaderRaw (see docs there). Used only in MSCOCO test evaluation, where we have a specific json file of only test set images.')
 # misc
-parser.add_argument('--id', type=str, default='transformer-cb-b3', 
+parser.add_argument('--id', type=str, default='transformer-cb-VinVL-feat-b2', 
                 help='an id identifying this run/job. used only if language_eval = 1 for appending to intermediate files')
 parser.add_argument('--verbose_beam', type=int, default=1, 
                 help='if we need to print out all beam search beams.')
@@ -108,7 +108,7 @@ if opt.batch_size == 0:
     opt.batch_size = infos['opt'].batch_size
 if len(opt.id) == 0:
     opt.id = infos['opt'].id
-ignore = ["id", "batch_size", "beam_size", "start_from", "language_eval", "block_trigrams","length_penalty",'val_images_use']
+ignore = ["id", "batch_size", "beam_size", "start_from", "language_eval", "block_trigrams","length_penalty",'val_images_use', 'input_json','input_fc_dir','input_att_dir','input_box_dir']
 
 for k in vars(infos['opt']).keys():
     if k not in ignore:
@@ -148,4 +148,4 @@ if lang_stats:
 
 if opt.dump_json == 1:
     # dump the json
-    json.dump(split_predictions, open('vis/vis.json', 'w'))
+    json.dump(split_predictions, open('vis/{}.json'.format(opt.id), 'w'))

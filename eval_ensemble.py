@@ -6,7 +6,7 @@ import json
 import numpy as np
 
 import time
-import os
+import os, pdb
 from six.moves import cPickle
 
 import opts
@@ -31,9 +31,9 @@ parser.add_argument('--batch_size', type=int, default=0,
                 help='if > 0 then overrule, otherwise load from checkpoint.')
 parser.add_argument('--num_images', type=int, default=-1,
                 help='how many images to use when periodically evaluating the loss? (-1 = all)')
-parser.add_argument('--language_eval', type=int, default=0,
+parser.add_argument('--language_eval', type=int, default=1,
                 help='Evaluate language as well (1 = yes, 0 = no)? BLEU/CIDEr/METEOR/ROUGE_L? requires coco-caption code from Github.')
-parser.add_argument('--dump_images', type=int, default=1,
+parser.add_argument('--dump_images', type=int, default=0,
                 help='Dump images into vis/imgs folder for vis? (1=yes,0=no)')
 parser.add_argument('--dump_json', type=int, default=1,
                 help='Dump json with predictions into vis folder? (1=yes,0=no)')
@@ -73,14 +73,14 @@ parser.add_argument('--input_label_h5', type=str, default='',
                 help='path to the h5file containing the preprocessed dataset')
 parser.add_argument('--input_json', type=str, default='', 
                 help='path to the json file containing additional info and vocab. empty = fetch from model checkpoint.')
-parser.add_argument('--split', type=str, default='test', 
+parser.add_argument('--split', type=str, default='val', 
                 help='if running on MSCOCO images, which split to use: val|test|train')
 parser.add_argument('--coco_json', type=str, default='', 
                 help='if nonempty then use this file in DataLoaderRaw (see docs there). Used only in MSCOCO test evaluation, where we have a specific json file of only test set images.')
 parser.add_argument('--seq_length', type=int, default=40, 
                 help='maximum sequence length during sampling')
 # misc
-parser.add_argument('--id', type=str, default='', 
+parser.add_argument('--id', type=str, default='ensemble', 
                 help='an id identifying this run/job. used only if language_eval = 1 for appending to intermediate files')
 parser.add_argument('--verbose_beam', type=int, default=1, 
                 help='if we need to print out all beam search beams.')
@@ -89,8 +89,8 @@ parser.add_argument('--verbose_loss', type=int, default=0,
 
 opt = parser.parse_args()
 
-model_infos = [utils.pickle_load(open('log_%s/infos_%s-best.pkl' %(id, id))) for id in opt.ids]
-model_paths = ['log_%s/model-best.pth' %(id) for id in opt.ids]
+model_infos = [utils.pickle_load(open('save/%s/infos_%s-best.pkl' %(id, id),'rb')) for id in opt.ids]
+model_paths = ['save/%s/model-best.pth' %(id) for id in opt.ids]
 
 # Load one infos
 infos = model_infos[0]
@@ -118,7 +118,7 @@ assert max([getattr(infos['opt'], 'norm_box_feat', 0) for infos in model_infos])
 vocab = infos['vocab'] # ix -> word mapping
 
 # Setup the model
-from models.AttEnsemble import AttEnsemble
+from models.CBTEnsemble import CBTEnsemble
 
 _models = []
 for i in range(len(model_infos)):
@@ -129,7 +129,7 @@ for i in range(len(model_infos)):
 
 if opt.weights:
     opt.weights = [float(_) for _ in opt.weights]
-model = AttEnsemble(_models, weights=opt.weights)
+model = CBTEnsemble(_models, weights=opt.weights)
 model.seq_length = opt.seq_length
 model.cuda()
 model.eval()
