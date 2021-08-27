@@ -3,12 +3,15 @@
 ## Requirements
 - Python 3.8
 - Pytorch 1.6
+- lmdb
+- h5py
+- tensorboardX
 
 ## Prepare Data
 1. Please use **git clone --recurse-submodules** to clone this repository and remember to follow initialization steps in coco-caption/README.md.
-2. Download the preprocessd dataset from this [link](https://drive.google.com/file/d/1nF4lSK51oki46EfAvSJCudRv8un9HSwX/view?usp=sharing) and extract it to data/.
-3. Please follow this [instruction](https://github.com/ruotianluo/self-critical.pytorch/blob/master/data/README.md#convert-from-peteanderson80s-original-file) to prepare the **adaptive** bottom-up features and place them under data/mscoco/. Please follow this [instruction](https://github.com/ruotianluo/self-critical.pytorch#evaluate-on-coco-test-set) to prepare the features and place them under data/cocotest/ for online test evaluation.
-4. Download part checkpoints from [here](https://drive.google.com/file/d/1RLXRMpIgMQM4OGONUItW9K430atJ53OO/view?usp=sharing) and extract them to save/.
+2. Download the preprocessd dataset from this [link]() and extract it to data/.
+3. Please download the converted [VinVL](https://github.com/pzzhang/VinVL/blob/main/DOWNLOAD.md#pre-exacted-image-features) feature from this [link]() and place them under data/mscoco_VinVL/. You can also optionally follow this [instruction](https://github.com/ruotianluo/self-critical.pytorch/blob/master/data/README.md#convert-from-peteanderson80s-original-file) to prepare the fixed or adaptive  bottom-up features extracted by Anderson and place them under data/mscoco/ or data/mscoco_adaptive/.
+4. Download part checkpoints from [here]() and extract them to save/.
 
 ## Offline Evaluation
 To reproduce the results of single CBTIC model on Karpathy test split, just run
