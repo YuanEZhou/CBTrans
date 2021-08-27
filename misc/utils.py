@@ -12,9 +12,9 @@ import os
 import six, pdb
 from six.moves import cPickle
 
-bad_endings = ['with','in','on','of','a','at','to','for','an','this','his','her','that']
-bad_endings += ['the']
-
+# bad_endings = ['with','in','on','of','a','at','to','for','an','this','his','her','that']
+# bad_endings += ['the']
+bad_endings = ['with','in','on','of', 'and']
 def pickle_load(f):
     """ Load a pickle.
     Parameters
