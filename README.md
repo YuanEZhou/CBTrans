@@ -9,7 +9,7 @@
 
 ## Prepare Data
 1. Please use **git clone --recurse-submodules** to clone this repository and remember to follow initialization steps in coco-caption/README.md.
-2. Download the preprocessd dataset from this [link]() and extract it to data/.
+2. Download the preprocessd dataset from this [link](https://entuedu-my.sharepoint.com/:u:/g/personal/n1806230d_e_ntu_edu_sg/ESjYq2E7NlJGuyCaNyCSadEBarCtcRtUMR7Nd0UgTIm3-A?e=Rl0Bu2) and extract it to data/.
 3. Please download the converted [VinVL](https://github.com/pzzhang/VinVL/blob/main/DOWNLOAD.md#pre-exacted-image-features) feature from this [link]() and place them under data/mscoco_VinVL/. You can also optionally follow this [instruction](https://github.com/ruotianluo/self-critical.pytorch/blob/master/data/README.md#convert-from-peteanderson80s-original-file) to prepare the fixed or adaptive  bottom-up features extracted by Anderson and place them under data/mscoco/ or data/mscoco_adaptive/.
 4. Download part checkpoints from [here]() and extract them to save/.
 
