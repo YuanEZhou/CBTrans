@@ -55,7 +55,14 @@ python  train.py    --seq_per_img 5 --batch_size 10 --beam_size 1 --learning_rat
 ## Citation
 
 ```
-
+@misc{zhou2022compact,
+      title={Compact Bidirectional Transformer for Image Captioning}, 
+      author={Yuanen Zhou and Zhenzhen Hu and Daqing Liu and Huixia Ben and Meng Wang},
+      year={2022},
+      eprint={2201.01984},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
 ```
 
 ## Acknowledgements
